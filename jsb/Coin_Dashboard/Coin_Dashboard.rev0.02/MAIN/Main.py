@@ -1,0 +1,35 @@
+import time
+from Indication_Updator import process_indicators_update
+from Manage_DB.Add_missing_columns import add_missing_columns
+from Manage_DB.Clone_Table import clone_table
+from Manage_DB.DB_Managing import get_db_connection
+from Manage_DB.Sync_Table import sync_table_data
+
+# 테이블명 변수 선언
+SOURCE_TABLE = 'K_REAL_TIME'  
+TARGET_TABLE = 'K_REAL_TIME_3'
+
+if __name__ == "__main__":
+    conn = None
+    try:
+        # DB 연결
+        conn = get_db_connection()
+
+        while True:
+            # 대상 테이블 복제 (존재하지 않을 때만)
+            clone_table(conn, SOURCE_TABLE, TARGET_TABLE)
+
+            # source_table에서 target_table로 데이터 동기화 (MERGE 사용)
+            sync_table_data(conn, SOURCE_TABLE, TARGET_TABLE)
+
+            # 지표 계산 및 업데이트
+            process_indicators_update(conn, TARGET_TABLE)
+
+            time.sleep(30)  # 1분 대기
+
+    except Exception as e:
+        print(f"오류 발생: {e}")
+
+    finally:
+        if conn:
+            conn.close()
